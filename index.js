@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -23,6 +24,24 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+// verify token
+const verifyToken = (req, res, next) => {
+  const authHeaders = req.headers.authorization;
+
+  if (!authHeaders) {
+    return res.status(401).send("unauthorized access");
+  }
+
+  const token = authHeaders.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+    if (err) {
+      return res.status(403).send("forbidden");
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
+
 async function run() {
   const mediaTaskCollection = client
     .db("taskManagement")
@@ -30,7 +49,29 @@ async function run() {
   const dailyTaskCollection = client
     .db("taskManagement")
     .collection("dailyTask");
+  const usersCollection = client.db("taskManagement").collection("users");
   try {
+    // create jwt
+    app.get("/jwt", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const user = await usersCollection.find(query);
+      if (user) {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
+          expiresIn: "1d",
+        });
+        return res.send({ access_token: token });
+      }
+      res.status(403).send({ access_token: "" });
+    });
+
+    // users
+    app.post("/users", async (req, res) => {
+      const users = req.body;
+      const result = await usersCollection.insertOne(users);
+      res.send(result);
+    });
+
     // daily task
     app.get("/dailyTask", async (req, res) => {
       const query = {};
@@ -44,7 +85,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/dailyTask/:id", async (req, res) => {
+    app.delete("/dailyTask/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const result = await dailyTaskCollection.deleteOne(filter);
