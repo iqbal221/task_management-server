@@ -50,6 +50,9 @@ async function run() {
     .db("taskManagement")
     .collection("dailyTask");
   const usersCollection = client.db("taskManagement").collection("users");
+  const completedTaskCollection = client
+    .db("taskManagement")
+    .collection("completedTask");
   try {
     // create jwt
     app.get("/jwt", async (req, res) => {
@@ -109,6 +112,26 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const result = await mediaTaskCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    // completed task
+    app.post("/completedTask", async (req, res) => {
+      const taskInfo = req.body;
+      const result = await completedTaskCollection.insertOne(taskInfo);
+      res.send(result);
+    });
+
+    app.get("/completedTask", async (req, res) => {
+      const query = {};
+      const completedTask = await completedTaskCollection.find(query).toArray();
+      res.send(completedTask);
+    });
+
+    app.delete("/completedTask/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await completedTaskCollection.deleteOne(filter);
       res.send(result);
     });
   } finally {
