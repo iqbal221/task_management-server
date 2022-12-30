@@ -95,6 +95,25 @@ async function run() {
       res.send(result);
     });
 
+    app.put("/dailyTask/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const taskInfo = req.body;
+      console.log(taskInfo);
+      const option = { upsert: true };
+      const updateTask = {
+        $set: {
+          dTask: taskInfo.dTask,
+        },
+      };
+      const result = await dailyTaskCollection.updateOne(
+        filter,
+        updateTask,
+        option
+      );
+      res.send(result);
+    });
+
     // media task
     app.get("/mediaTask", async (req, res) => {
       const query = {};
@@ -128,7 +147,7 @@ async function run() {
       res.send(completedTask);
     });
 
-    app.delete("/completedTask/:id", async (req, res) => {
+    app.delete("/completedTask/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const result = await completedTaskCollection.deleteOne(filter);
